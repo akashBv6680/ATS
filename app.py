@@ -41,15 +41,17 @@ def get_together_analysis(resume_text):
     """
 
     try:
+        # **CORRECTED MODEL NAME** # Using a valid Llama 3.1 model name from Together AI's current list.
+        # This is a common and powerful model for this task.
         response = client.chat.completions.create(
-            model="togethercomputer/llama-3.1-70b-instruct",  # You can choose other models
+            model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo", 
             messages=[
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
             response_format={"type": "json_object"}
         )
-        # Parse the JSON response
+        
         import json
         analysis_data = json.loads(response.choices[0].message.content)
         return analysis_data
