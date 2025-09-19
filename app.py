@@ -1,17 +1,16 @@
 import streamlit as st
 import PyPDF2
 from together import Together
-import os
 
-# Set your Together API key from environment variables or Streamlit secrets
-TOGETHER_API_KEY = os.environ.get("TOGETHER_API_KEY")
+# Access the API key securely from Streamlit secrets
+TOGETHER_API_KEY = st.secrets["TOGETHER_API_KEY"]
 
 def get_together_analysis(resume_text):
     """
     Sends the resume text to the Together AI API for analysis and scoring.
     """
     if not TOGETHER_API_KEY:
-        st.error("Please set the TOGETHER_API_KEY environment variable or in Streamlit secrets.")
+        st.error("API key not found. Please add your TOGETHER_API_KEY to Streamlit's secrets.")
         return None
 
     client = Together(api_key=TOGETHER_API_KEY)
@@ -19,7 +18,7 @@ def get_together_analysis(resume_text):
     # The prompt is the most important part! This tells the AI what to do.
     prompt = f"""
     You are an expert ATS (Applicant Tracking System) scanner. Your task is to analyze a resume and provide a score from 1 to 100 based on its ATS compatibility and overall quality.
-    
+
     The analysis should be a JSON object with the following structure:
     {{
         "score": (integer),
@@ -31,13 +30,13 @@ def get_together_analysis(resume_text):
             "formatting_tips": "Suggestions for formatting for better ATS parsing."
         }}
     }}
-    
+
     Here is the resume text to analyze:
-    
+
     <resume>
     {resume_text}
     </resume>
-    
+
     Provide only the JSON object in your response, nothing else.
     """
 
@@ -73,7 +72,7 @@ def extract_text_from_pdf(uploaded_file):
         st.error(f"An error occurred while reading the PDF: {e}")
         return None
 
-## Streamlit UI
+# Streamlit UI
 st.set_page_config(page_title="ATS Resume Scanner", page_icon="📄")
 st.title("ATS Resume Scanner 🤖📄")
 st.markdown("Upload your resume (PDF) to get an ATS-friendly score and personalized feedback.")
