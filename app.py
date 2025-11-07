@@ -2,10 +2,9 @@ import streamlit as st
 import PyPDF2
 import google.generativeai as genai
 import json
-import re
+import re # Added for robust JSON parsing
 
 # Load Gemini API key from Streamlit secrets
-# Note: st.secrets.get() is the correct modern way to access secrets.
 # Ensure you have a file named .streamlit/secrets.toml with:
 # GEMINI_API_KEY="YOUR_API_KEY_HERE"
 GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", None)
@@ -24,10 +23,9 @@ def gemini_analysis(resume_text):
     try:
         genai.configure(api_key=GEMINI_API_KEY)
         
-        # --- CRITICAL CORRECTION: Changed model for stability ---
-        # The 'gemini-1.5-flash' error is fixed by using a stable model name.
-        # 'gemini-1.0-pro' is a widely-supported model for complex generation tasks.
-        model = genai.GenerativeModel('gemini-1.0-pro') 
+        # --- CRITICAL CORRECTION: Using the latest stable Flash model ---
+        # This model is generally available for the generate_content method.
+        model = genai.GenerativeModel('gemini-2.5-flash') 
         
         # Using a triple-quoted string for the prompt
         prompt = f"""
@@ -56,13 +54,13 @@ def gemini_analysis(resume_text):
         response = model.generate_content(prompt)
         response_text = response.text.strip()
         
-        # --- ROBUST JSON PARSING CORRECTION ---
+        # --- ROBUST JSON PARSING ---
         # Use regex to find and extract the JSON object, ignoring markdown fences.
         json_match = re.search(r'(\{[\s\S]*\})', response_text)
         if json_match:
             json_string = json_match.group(1)
         else:
-            # Fallback to simple stripping if regex fails (for very clean responses)
+            # Fallback to simple stripping if regex fails
             json_string = response_text.replace('```json', '').replace('```', '').strip()
 
         # Parse JSON safely
@@ -70,8 +68,6 @@ def gemini_analysis(resume_text):
         
     except Exception as e:
         st.error(f"An error occurred while calling the Gemini API: {e}")
-        # The API key error (e.g., 400 or 401) is often masked here.
-        # If you see a 401/403/404 error again, check the API key and model name.
         st.error(f"Attempted to parse: {response_text.strip()}")
     return None
 
