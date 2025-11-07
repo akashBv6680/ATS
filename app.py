@@ -8,7 +8,8 @@ def gemini_analysis(resume_text):
     """
     Sends the resume text to the Gemini API for analysis and scoring.    """
     if not GEMINI_API_KEY:
-        st.error("API key not found. Please add your GEMINI_API_KEY to Streamlit's secrets.")        return None
+        st.error("API key not found. Please add your GEMINI_API_KEY to Streamlit's secrets.")
+                return None
 
     # Configure Gemini API
     genai.configure(api_key=GEMINI_API_KEY)
@@ -54,7 +55,8 @@ def gemini_analysis(resume_text):
         analysis_data = json.loads(response_text.strip())
         return analysis_data
     except Exception as e:
-        st.error(f"An error occurred while calling the Gemini API: {e}")        return None
+        st.error(f"An error occurred while calling the Gemini API: {e}")
+                return None
 
 def extract_text_from_pdf(uploaded_file):
     """
@@ -83,7 +85,8 @@ if uploaded_file is not None:
         resume_text = extract_text_from_pdf(uploaded_file)
 
         if resume_text:
-                # Get analysis from Gemini AI            analysis = gemini_analysis(resume_text)
+                # Get analysis from Gemini AI
+                            analysis = gemini_analysis(resume_text)
 
             if analysis:
                 st.subheader("Your ATS Score")
