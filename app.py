@@ -3,12 +3,18 @@ import PyPDF2
 import google.generativeai as genai
 import json
 
+# Load Gemini API key from Streamlit secrets
 GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", None)
 
 def gemini_analysis(resume_text):
+    """
+    Sends the resume text to the Gemini API for analysis and scoring.
+    Returns a dictionary response on success, None on failure.
+    """
     if not GEMINI_API_KEY:
         st.error("API key not found. Please add your GEMINI_API_KEY to Streamlit's secrets.")
         return None
+
     try:
         genai.configure(api_key=GEMINI_API_KEY)
         model = genai.GenerativeModel('gemini-1.5-flash')
@@ -38,18 +44,22 @@ def gemini_analysis(resume_text):
         response = model.generate_content(prompt)
         response_text = response.text.strip()
         # Remove markdown code blocks if present
-        if response_text.startswith('```json'):
-            response_text = response_text[7:]
         if response_text.startswith('```
+            response_text = response_text[7:]
+        if response_text.startswith('```'):
             response_text = response_text[3:]
-        if response_text.endswith('```'):
+        if response_text.endswith('```
             response_text = response_text[:-3]
+        # Parse JSON safely
         return json.loads(response_text.strip())
     except Exception as e:
         st.error(f"An error occurred while calling the Gemini API: {e}")
     return None
 
 def extract_text_from_pdf(uploaded_file):
+    """
+    Extracts text from a PDF file.
+    """
     try:
         reader = PyPDF2.PdfReader(uploaded_file)
         text = ""
@@ -62,6 +72,7 @@ def extract_text_from_pdf(uploaded_file):
         st.error(f"An error occurred while reading the PDF: {e}")
     return None
 
+# Streamlit UI setup
 st.set_page_config(page_title="ATS Resume Scanner", page_icon="📄")
 st.title("ATS Resume Scanner 🤖📄")
 st.markdown("Upload your resume (PDF) to get an ATS-friendly score and personalized feedback.")
@@ -72,7 +83,7 @@ if uploaded_file is not None:
     with st.spinner("Scanning your resume... This may take a moment."):
         resume_text = extract_text_from_pdf(uploaded_file)
         if not resume_text:
-            st.error("Failed to extract text from PDF. Make sure the file isn't scanned or image-only and try again.")
+            st.error("Failed to extract text from PDF. Make sure the file isn't scanned/image-only and try again.")
             st.stop()
         analysis = gemini_analysis(resume_text)
         if not analysis:
