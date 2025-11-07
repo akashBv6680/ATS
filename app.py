@@ -9,7 +9,7 @@ def gemini_analysis(resume_text):
     Sends the resume text to the Gemini API for analysis and scoring.    """
     if not GEMINI_API_KEY:
         st.error("API key not found. Please add your GEMINI_API_KEY to Streamlit's secrets.")
-                return None
+            return None
 
     # Configure Gemini API
     genai.configure(api_key=GEMINI_API_KEY)
