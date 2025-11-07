@@ -2,9 +2,12 @@ import streamlit as st
 import PyPDF2
 import google.generativeai as genai
 import json
+import re
 
 # Load Gemini API key from Streamlit secrets
 # Note: st.secrets.get() is the correct modern way to access secrets.
+# Ensure you have a file named .streamlit/secrets.toml with:
+# GEMINI_API_KEY="YOUR_API_KEY_HERE"
 GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", None)
 
 def gemini_analysis(resume_text):
@@ -16,9 +19,15 @@ def gemini_analysis(resume_text):
         st.error("API key not found. Please add your GEMINI_API_KEY to Streamlit's secrets.")
         return None
 
+    response_text = "No response received" # Initialize outside try block
+
     try:
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # --- CRITICAL CORRECTION: Changed model for stability ---
+        # The 'gemini-1.5-flash' error is fixed by using a stable model name.
+        # 'gemini-1.0-pro' is a widely-supported model for complex generation tasks.
+        model = genai.GenerativeModel('gemini-1.0-pro') 
         
         # Using a triple-quoted string for the prompt
         prompt = f"""
@@ -47,25 +56,23 @@ def gemini_analysis(resume_text):
         response = model.generate_content(prompt)
         response_text = response.text.strip()
         
-        # --- CORRECTION APPLIED HERE ---
-        # The AI often wraps JSON in a markdown block like ```json ... ```
-        # We need to strip this. The issue was with multiline string checks.
-
-        # Check for and strip common starting markdown fences
-        if response_text.startswith('```json'):
-            response_text = response_text[7:]
-        elif response_text.startswith('```'):
-            response_text = response_text[3:]
-
-        # Check for and strip the closing markdown fence
-        if response_text.endswith('```'):
-            response_text = response_text[:-3]
+        # --- ROBUST JSON PARSING CORRECTION ---
+        # Use regex to find and extract the JSON object, ignoring markdown fences.
+        json_match = re.search(r'(\{[\s\S]*\})', response_text)
+        if json_match:
+            json_string = json_match.group(1)
+        else:
+            # Fallback to simple stripping if regex fails (for very clean responses)
+            json_string = response_text.replace('```json', '').replace('```', '').strip()
 
         # Parse JSON safely
-        return json.loads(response_text.strip())
+        return json.loads(json_string)
+        
     except Exception as e:
         st.error(f"An error occurred while calling the Gemini API: {e}")
-        st.error(f"Attempted to parse: {response_text.strip() if 'response_text' in locals() else 'No response received'}")
+        # The API key error (e.g., 400 or 401) is often masked here.
+        # If you see a 401/403/404 error again, check the API key and model name.
+        st.error(f"Attempted to parse: {response_text.strip()}")
     return None
 
 def extract_text_from_pdf(uploaded_file):
@@ -73,6 +80,8 @@ def extract_text_from_pdf(uploaded_file):
     Extracts text from a PDF file.
     """
     try:
+        # Check if file is not None and has content
+        uploaded_file.seek(0)
         reader = PyPDF2.PdfReader(uploaded_file)
         text = ""
         for page in reader.pages:
@@ -89,9 +98,14 @@ st.set_page_config(page_title="ATS Resume Scanner", page_icon="📄")
 st.title("ATS Resume Scanner 🤖📄")
 st.markdown("Upload your resume (PDF) to get an ATS-friendly score and personalized feedback.")
 
-uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
+uploaded_file = st.file_uploader("Choose a PDF file (Limit 200MB per file)", type="pdf")
 
 if uploaded_file is not None:
+    # Check for file size
+    if uploaded_file.size > 200 * 1024 * 1024:
+        st.error("File size exceeds the 200MB limit.")
+        st.stop()
+        
     # Adding a check for PyPDF2 installation
     try:
         import PyPDF2
@@ -105,7 +119,7 @@ if uploaded_file is not None:
         if not resume_text:
             st.error("Failed to extract text from PDF. Make sure the file isn't scanned/image-only and try again.")
             st.stop()
-        
+            
         analysis = gemini_analysis(resume_text)
         
         if not analysis:
@@ -114,9 +128,15 @@ if uploaded_file is not None:
             
         st.subheader("Your ATS Score")
         score = analysis.get('score', 0)
-        st.markdown(f"**Score: {score}/100**")
-        st.progress(score / 100)
         
+        # Display score and progress
+        col1, col2 = st.columns([1, 4])
+        with col1:
+            st.markdown(f"# **{score}**")
+        with col2:
+            st.markdown("out of 100")
+            st.progress(score / 100)
+            
         if score >= 80:
             st.success("Great job! Your resume is highly ATS-friendly. 🚀")
         elif score >= 50:
@@ -128,13 +148,14 @@ if uploaded_file is not None:
         st.subheader("Actionable Feedback")
         feedback = analysis.get('feedback', {})
         
-        with st.expander("Overall Summary"):
+        # Display feedback in expandable sections
+        with st.expander("📝 Overall Summary"):
             st.write(feedback.get('overall_summary', 'No summary provided.'))
-        with st.expander("Action Verbs"):
+        with st.expander("💪 Action Verbs"):
             st.write(feedback.get('action_verbs', 'No feedback provided.'))
-        with st.expander("Quantifiable Achievements"):
+        with st.expander("📊 Quantifiable Achievements"):
             st.write(feedback.get('quantifiable_achievements', 'No feedback provided.'))
-        with st.expander("Keywords"):
+        with st.expander("🔑 Keywords"):
             st.write(feedback.get('keywords', 'No feedback provided.'))
-        with st.expander("Formatting Tips"):
+        with st.expander("✨ Formatting Tips"):
             st.write(feedback.get('formatting_tips', 'No feedback provided.'))
