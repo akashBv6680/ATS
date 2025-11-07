@@ -86,7 +86,7 @@ if uploaded_file is not None:
 
         if resume_text:
                 # Get analysis from Gemini AI
-                            analysis = gemini_analysis(resume_text)
+            analysis = gemini_analysis(resume_text)
 
             if analysis:
                 st.subheader("Your ATS Score")
